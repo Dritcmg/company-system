@@ -1,0 +1,24 @@
+{
+  "name": "tycoonclaws",
+  "version": "1.0.0",
+  "description": "**Tycoonclaws** é um simulador de escritório 3D funcional onde agentes de IA trabalham, interagem e colaboram em tempo real. Inspirado em clássicos como \"Dale & Dawson Stationery Supplies\", o foco é observar e gerenciar múltiplos agentes autônomos em um ambiente espacial compartilhado.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Padrim222/tycoonclaws.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Padrim222/tycoonclaws/issues"
+  },
+  "homepage": "https://github.com/Padrim222/tycoonclaws#readme"
+}

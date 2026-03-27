@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TycoonClaws</title>
+  <meta name="description" content="Open Tycoon: Gerencie agentes de IA em um escritório 3D real" />
+  <link rel="stylesheet" href="/src/renderer/ui/styles.css" />
+</head>
+<body>
+
+  <!-- 3D Canvas -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-left">
+      <button id="hud-start-btn">🦊 Start</button>
+      <span id="hud-name">TycoonClaws HQ</span>
+      <span id="hud-fase">STARTUP</span>
+    </div>
+    <div class="hud-right">
+      <div class="hud-stat"><span class="icon">👥</span> <span id="hud-agents">0</span></div>
+      <div class="hud-stat"><span class="icon">📋</span> <span id="hud-tasks">0</span></div>
+      <div class="hud-stat"><span class="icon">🪙</span> <span id="hud-tokens">0</span></div>
+      <div class="hud-stat hud-clock-stat"><span id="hud-clock">00:00:00</span></div>
+    </div>
+  </div>
+
+  <!-- Status bar -->
+  <div id="hud-status">Use W A S D para andar. Clique em um agente para gerenciar.</div>
+
+  <!-- Controls hint -->
+  <div class="controls-hint">
+    <kbd>R</kbd> Reunião &nbsp;
+    <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Andar &nbsp;
+    <kbd>Shift</kbd> Correr &nbsp;
+    <kbd>E</kbd> Interagir &nbsp;
+    <kbd>Esc</kbd> Fechar
+  </div>
+
+  <!-- Task Panel (slide-in right) -->
+  <div id="task-panel">
+    <div class="panel-header">
+      <h3>Gerenciamento de Agente</h3>
+      <button id="panel-close">✕</button>
+    </div>
+    <div id="panel-content"></div>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toast-container"></div>
+
+  <script type="module" src="/src/renderer/main.js"></script>
+</body>
+</html>
