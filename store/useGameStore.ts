@@ -61,6 +61,14 @@ interface GameState {
   fetchProjects: () => Promise<void>;
   fetchAgents: () => Promise<void>;
 
+  // Mutations
+  createClient: (data: Omit<Client, 'id'>) => Promise<{ error: string | null }>;
+  createProject: (data: Omit<Project, 'id'>) => Promise<{ error: string | null }>;
+  createAgent: (data: Omit<Agent, 'id'>) => Promise<{ error: string | null }>;
+
+  // Quick Nav
+  navigateTo: (view: View) => void;
+
   // Realtime Setup
   hasInitializedRealtime: boolean;
   initRealtimeSubscription: () => void;
@@ -126,6 +134,28 @@ export const useGameStore = create<GameState>((set) => ({
       console.error("Failed to fetch agents from Supabase:", e);
     }
   },
+
+  createClient: async (data) => {
+    const initials = data.name
+      .split(' ').slice(0, 2).map((n: string) => n[0].toUpperCase()).join('');
+    const { error } = await supabase.from('clients').insert([{ ...data, initials }]);
+    if (error) return { error: error.message };
+    return { error: null };
+  },
+
+  createProject: async (data) => {
+    const { error } = await supabase.from('projects').insert([data]);
+    if (error) return { error: error.message };
+    return { error: null };
+  },
+
+  createAgent: async (data) => {
+    const { error } = await supabase.from('agents').insert([data]);
+    if (error) return { error: error.message };
+    return { error: null };
+  },
+
+  navigateTo: (view) => set({ currentView: view, isOmniInputOpen: false }),
 
   hasInitializedRealtime: false,
   initRealtimeSubscription: () => {

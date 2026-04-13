@@ -1,98 +1,373 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search,
-  FolderPlus,
-  UserPlus,
-  Zap,
-  FileText,
-  BarChart2,
-  ArrowRight,
-  X,
+  Search, FolderPlus, UserPlus, Zap, BarChart2,
+  X, ArrowRight, ArrowLeft, Loader2, Building2,
+  Users, LayoutDashboard, Cpu,
 } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
+import { toast } from 'sonner';
 
-interface Suggestion {
+// ─── Types ────────────────────────────────────────────────────────────────────
+type ActionId = 'create-client' | 'create-project' | 'create-agent' | 'analyze-ai' | 'nav-clients' | 'nav-projects' | 'nav-lobby';
+
+interface Action {
+  id: ActionId;
   icon: React.ElementType;
   label: string;
   description: string;
   iconColor: string;
   iconBg: string;
+  type: 'form' | 'nav' | 'ai';
 }
 
-const SUGGESTIONS: Suggestion[] = [
-  { icon: FolderPlus, label: 'Criar Novo Projeto',       description: 'Abrir formulário de projeto',         iconColor: '#3B82F6', iconBg: '#EFF6FF' },
-  { icon: UserPlus,   label: 'Cadastrar Cliente',        description: 'Adicionar novo cliente ao CRM',       iconColor: '#7C3AED', iconBg: '#F5F3FF' },
-  { icon: Zap,        label: 'Disparar Agente IA',       description: 'Executar automação via n8n',           iconColor: '#F59E0B', iconBg: '#FFFBEB' },
-  { icon: FileText,   label: 'Analisar Print de Cliente',description: 'Upload de imagem para triagem',        iconColor: '#059669', iconBg: '#ECFDF5' },
-  { icon: BarChart2,  label: 'Ver Relatório Financeiro', description: 'Resumo do período atual',              iconColor: '#EC4899', iconBg: '#FDF2F8' },
+const ACTIONS: Action[] = [
+  { id: 'create-client',  icon: UserPlus,       label: 'Cadastrar Cliente',     description: 'Adicionar novo cliente ao CRM',     iconColor: '#7C3AED', iconBg: '#F5F3FF', type: 'form' },
+  { id: 'create-project', icon: FolderPlus,     label: 'Criar Novo Projeto',    description: 'Abrir formulário de projeto',       iconColor: '#3B82F6', iconBg: '#EFF6FF', type: 'form' },
+  { id: 'create-agent',   icon: Cpu,            label: 'Configurar Novo Agente',description: 'Adicionar unidade ao sistema',      iconColor: '#059669', iconBg: '#ECFDF5', type: 'form' },
+  { id: 'analyze-ai',     icon: Zap,            label: 'Analisar com IA',       description: 'Digitar uma instrução e enviar ao n8n', iconColor: '#F59E0B', iconBg: '#FFFBEB', type: 'ai' },
+  { id: 'nav-clients',    icon: Users,          label: 'Ir para Clientes',      description: 'Navegar para o CRM de clientes',   iconColor: '#EC4899', iconBg: '#FDF2F8', type: 'nav' },
+  { id: 'nav-projects',   icon: LayoutDashboard,label: 'Ir para Projetos',      description: 'Navegar para o Kanban de projetos', iconColor: '#0EA5E9', iconBg: '#F0F9FF', type: 'nav' },
+  { id: 'nav-lobby',      icon: Building2,      label: 'Voltar ao Lobby',       description: 'Ir para a tela inicial',            iconColor: '#6366F1', iconBg: '#EEF2FF', type: 'nav' },
+  { id: 'analyze-ai',     icon: BarChart2,      label: 'Relatório Financeiro',  description: 'Solicitar relatório via IA',        iconColor: '#EC4899', iconBg: '#FDF2F8', type: 'ai' },
 ];
 
+// ─── Sub-components ────────────────────────────────────────────────────────────
+const inputCls = `w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50
+  text-[13px] font-medium text-slate-900 placeholder:text-slate-400
+  focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all`;
+
+const labelCls = `text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 block`;
+
+// ─── Form: Create Client ──────────────────────────────────────────────────────
+const CreateClientForm: React.FC<{ onBack: () => void; onDone: () => void }> = ({ onBack, onDone }) => {
+  const { createClient } = useGameStore();
+  const [form, setForm] = useState({ name: '', company: '', tag: 'lead', value: '' });
+  const [saving, setSaving] = useState(false);
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => { ref.current?.focus(); }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.company.trim()) return;
+    setSaving(true);
+    const { error } = await createClient({
+      name: form.name,
+      company: form.company,
+      tag: form.tag as 'lead' | 'active' | 'churned',
+      value: Number(form.value) || 0,
+      initials: '',
+    });
+    setSaving(false);
+    if (error) {
+      toast.error('Erro ao salvar cliente: ' + error);
+    } else {
+      toast.success('Cliente cadastrado com sucesso!');
+      onDone();
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-4">
+      <div>
+        <label className={labelCls}>Nome do cliente</label>
+        <input ref={ref} className={inputCls} placeholder="ex: João Silva" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+      </div>
+      <div>
+        <label className={labelCls}>Empresa</label>
+        <input className={inputCls} placeholder="ex: TechFlow Ltda." value={form.company} onChange={e => setForm(f => ({ ...f, company: e.target.value }))} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={labelCls}>Status</label>
+          <select className={inputCls} value={form.tag} onChange={e => setForm(f => ({ ...f, tag: e.target.value }))}>
+            <option value="lead">Lead</option>
+            <option value="active">Ativo</option>
+            <option value="churned">Inativo</option>
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>Valor do contrato (R$)</label>
+          <input className={inputCls} type="number" placeholder="0" value={form.value} onChange={e => setForm(f => ({ ...f, value: e.target.value }))} />
+        </div>
+      </div>
+      <div className="flex gap-3 pt-1">
+        <button type="button" onClick={onBack} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-[13px] text-slate-500 font-semibold hover:bg-slate-50 transition-all">
+          Cancelar
+        </button>
+        <button type="submit" disabled={saving || !form.name.trim()} className="flex-1 py-2.5 rounded-xl bg-violet-600 text-white text-[13px] font-bold hover:bg-violet-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2">
+          {saving ? <Loader2 size={14} className="animate-spin" /> : null}
+          {saving ? 'Salvando...' : 'Cadastrar Cliente'}
+        </button>
+      </div>
+    </form>
+  );
+};
+
+// ─── Form: Create Project ─────────────────────────────────────────────────────
+const CreateProjectForm: React.FC<{ onBack: () => void; onDone: () => void }> = ({ onBack, onDone }) => {
+  const { createProject, clients } = useGameStore();
+  const [form, setForm] = useState({ title: '', client: '', status: 'backlog', workload: '0', tags: '' });
+  const [saving, setSaving] = useState(false);
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => { ref.current?.focus(); }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.title.trim()) return;
+    setSaving(true);
+    const { error } = await createProject({
+      title: form.title,
+      client: form.client,
+      status: form.status as 'backlog' | 'in-progress' | 'done',
+      workload: Number(form.workload) || 0,
+      tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
+    });
+    setSaving(false);
+    if (error) {
+      toast.error('Erro ao criar projeto: ' + error);
+    } else {
+      toast.success('Projeto criado com sucesso!');
+      onDone();
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-4">
+      <div>
+        <label className={labelCls}>Nome do Projeto</label>
+        <input ref={ref} className={inputCls} placeholder="ex: Portal do Cliente v2" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+      </div>
+      <div>
+        <label className={labelCls}>Cliente Associado</label>
+        {clients.length > 0 ? (
+          <select className={inputCls} value={form.client} onChange={e => setForm(f => ({ ...f, client: e.target.value }))}>
+            <option value="">Selecionar cliente…</option>
+            {clients.map(c => <option key={c.id} value={c.company}>{c.name} — {c.company}</option>)}
+          </select>
+        ) : (
+          <input className={inputCls} placeholder="Nome da empresa" value={form.client} onChange={e => setForm(f => ({ ...f, client: e.target.value }))} />
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={labelCls}>Status</label>
+          <select className={inputCls} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+            <option value="backlog">Backlog</option>
+            <option value="in-progress">Em Progresso</option>
+            <option value="done">Concluído</option>
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>Workload (%)</label>
+          <input className={inputCls} type="number" min="0" max="100" placeholder="0" value={form.workload} onChange={e => setForm(f => ({ ...f, workload: e.target.value }))} />
+        </div>
+      </div>
+      <div>
+        <label className={labelCls}>Tags (separadas por vírgula)</label>
+        <input className={inputCls} placeholder="ex: Next.js, Supabase, n8n" value={form.tags} onChange={e => setForm(f => ({ ...f, tags: e.target.value }))} />
+      </div>
+      <div className="flex gap-3 pt-1">
+        <button type="button" onClick={onBack} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-[13px] text-slate-500 font-semibold hover:bg-slate-50 transition-all">
+          Cancelar
+        </button>
+        <button type="submit" disabled={saving || !form.title.trim()} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-[13px] font-bold hover:bg-blue-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2">
+          {saving ? <Loader2 size={14} className="animate-spin" /> : null}
+          {saving ? 'Salvando...' : 'Criar Projeto'}
+        </button>
+      </div>
+    </form>
+  );
+};
+
+// ─── Form: Create Agent ──────────────────────────────────────────────────────
+const CreateAgentForm: React.FC<{ onBack: () => void; onDone: () => void }> = ({ onBack, onDone }) => {
+  const { createAgent } = useGameStore();
+  const [form, setForm] = useState({ title: '', sub_title: '', type: 'admin', progress: '0' });
+  const [saving, setSaving] = useState(false);
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => { ref.current?.focus(); }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.title.trim()) return;
+    setSaving(true);
+    const { error } = await createAgent({
+      title: form.title,
+      sub_title: form.sub_title,
+      type: form.type,
+      progress: Number(form.progress) || 0,
+    });
+    setSaving(false);
+    if (error) {
+      toast.error('Erro ao configurar agente: ' + error);
+    } else {
+      toast.success('Agente configurado com sucesso!');
+      onDone();
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-4">
+      <div>
+        <label className={labelCls}>Nome do Agente</label>
+        <input ref={ref} className={inputCls} placeholder="ex: Financial Center" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+      </div>
+      <div>
+        <label className={labelCls}>Subtítulo / Função</label>
+        <input className={inputCls} placeholder="ex: Contracts & Treasury" value={form.sub_title} onChange={e => setForm(f => ({ ...f, sub_title: e.target.value }))} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={labelCls}>Tipo</label>
+          <select className={inputCls} value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
+            <option value="admin">Administrative</option>
+            <option value="finance">Financial</option>
+            <option value="production">Production</option>
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>Workload Inicial (%)</label>
+          <input className={inputCls} type="number" min="0" max="100" placeholder="0" value={form.progress} onChange={e => setForm(f => ({ ...f, progress: e.target.value }))} />
+        </div>
+      </div>
+      <div className="flex gap-3 pt-1">
+        <button type="button" onClick={onBack} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-[13px] text-slate-500 font-semibold hover:bg-slate-50 transition-all">
+          Cancelar
+        </button>
+        <button type="submit" disabled={saving || !form.title.trim()} className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-[13px] font-bold hover:bg-emerald-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2">
+          {saving ? <Loader2 size={14} className="animate-spin" /> : null}
+          {saving ? 'Salvando...' : 'Ativar Agente'}
+        </button>
+      </div>
+    </form>
+  );
+};
+
+// ─── Form: AI Analysis ───────────────────────────────────────────────────────
+const AIAnalysisForm: React.FC<{ initialQuery: string; onBack: () => void; onDone: () => void }> = ({ initialQuery, onBack, onDone }) => {
+  const [prompt, setPrompt] = useState(initialQuery);
+  const [sending, setSending] = useState(false);
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => { ref.current?.focus(); }, []);
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!prompt.trim()) return;
+    setSending(true);
+    const toastId = toast.loading('Enviando para a IA...');
+    try {
+      const res = await fetch('/api/n8n', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'analyze', context_role: 'master_1', query: prompt }),
+      });
+      if (!res.ok) throw new Error('Falha na requisição');
+      toast.success('IA acionada com sucesso!', { id: toastId });
+      onDone();
+    } catch {
+      toast.error('Erro ao contatar o n8n. Verifique a conexão.', { id: toastId });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSend} className="px-6 py-5 flex flex-col gap-4">
+      <div>
+        <label className={labelCls}>Instrução para a IA</label>
+        <textarea
+          ref={ref}
+          rows={4}
+          className={`${inputCls} resize-none`}
+          placeholder="ex: Analise o contrato da Nicole e me diga os próximos gatilhos de pagamento."
+          value={prompt}
+          onChange={e => setPrompt(e.target.value)}
+        />
+      </div>
+      <p className="text-[10px] text-slate-400">
+        A instrução será enviada ao n8n com o contexto <strong>master_1</strong> e processada pelo agente de IA configurado.
+      </p>
+      <div className="flex gap-3">
+        <button type="button" onClick={onBack} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-[13px] text-slate-500 font-semibold hover:bg-slate-50 transition-all">
+          Cancelar
+        </button>
+        <button type="submit" disabled={sending || !prompt.trim()} className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white text-[13px] font-bold hover:bg-amber-600 disabled:opacity-50 transition-all flex items-center justify-center gap-2">
+          {sending ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+          {sending ? 'Enviando...' : 'Analisar com IA'}
+        </button>
+      </div>
+    </form>
+  );
+};
+
+// ─── Main Modal ───────────────────────────────────────────────────────────────
 export const OmniInputModal: React.FC = () => {
-  const { isOmniInputOpen, setOmniInputOpen, toggleOmniInput } = useGameStore();
+  const { isOmniInputOpen, setOmniInputOpen, toggleOmniInput, navigateTo } = useGameStore();
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [activeAction, setActiveAction] = useState<ActionId | null>(null);
 
-  React.useEffect(() => { setSelectedIndex(0); }, [query]);
+  // Reset selected index when query changes (via key on list, no effect needed)
 
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+  // Global Ctrl+K / Cmd+K shortcut
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         toggleOmniInput();
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, [toggleOmniInput]);
-  const filtered = query.trim()
-    ? SUGGESTIONS.filter((s) =>
-        s.label.toLowerCase().includes(query.toLowerCase()) ||
-        s.description.toLowerCase().includes(query.toLowerCase())
-      )
-    : SUGGESTIONS;
 
-  const close = () => { 
-    setOmniInputOpen(false); 
-    setQuery(''); 
-    setSelectedIndex(0); 
+  const filteredActions = query.trim()
+    ? ACTIONS.filter(a =>
+        a.label.toLowerCase().includes(query.toLowerCase()) ||
+        a.description.toLowerCase().includes(query.toLowerCase())
+      )
+    : ACTIONS;
+
+  // Deduplicate by label for the list
+  const uniqueActions = filteredActions.filter((a, i, arr) => arr.findIndex(b => b.label === a.label) === i);
+
+  const close = () => {
+    setOmniInputOpen(false);
+    setQuery('');
+    setSelectedIndex(0);
+    setActiveAction(null);
   };
 
-  const handleExecute = async (suggestion: Suggestion) => {
-    if (isProcessing) return;
-    setIsProcessing(true);
-    try {
-      await fetch('/api/n8n', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: suggestion.label, query })
-      });
-      // Optionally delay close to show a checkmark or success state
-      setTimeout(close, 200);
-    } catch (error) {
-      console.error("Webhook Execution Error:", error);
-    } finally {
-      setIsProcessing(false);
+  const handleSelectAction = (action: Action) => {
+    if (action.type === 'nav') {
+      if (action.id === 'nav-clients') navigateTo('clients');
+      else if (action.id === 'nav-projects') navigateTo('projects');
+      else navigateTo('lobby');
+      close();
+      return;
     }
+    setActiveAction(action.id as ActionId);
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Escape') close();
-    if (e.key === 'ArrowDown') {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIndex(p => (p < uniqueActions.length - 1 ? p + 1 : 0)); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIndex(p => (p > 0 ? p - 1 : uniqueActions.length - 1)); }
+    if (e.key === 'Enter') {
       e.preventDefault();
-      setSelectedIndex((prev) => (prev < filtered.length - 1 ? prev + 1 : 0));
+      if (uniqueActions[selectedIndex]) handleSelectAction(uniqueActions[selectedIndex]);
+      else if (query.trim()) setActiveAction('analyze-ai'); // free-text → AI
     }
-    if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : filtered.length - 1));
-    }
-    if (e.key === 'Enter' && filtered[selectedIndex]) {
-      e.preventDefault();
-      handleExecute(filtered[selectedIndex]);
-    }
+  };
+
+  const formTitle: Record<string, string> = {
+    'create-client': 'Cadastrar Cliente',
+    'create-project': 'Criar Novo Projeto',
+    'create-agent': 'Configurar Agente',
+    'analyze-ai': 'Analisar com IA',
   };
 
   return (
@@ -102,17 +377,15 @@ export const OmniInputModal: React.FC = () => {
           {/* Backdrop */}
           <motion.div
             key="omni-bd"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={close}
             className="fixed inset-0 z-[60]"
-            style={{ background: 'rgba(15,23,42,0.20)', backdropFilter: 'blur(4px)' }}
+            style={{ background: 'rgba(15,23,42,0.22)', backdropFilter: 'blur(4px)' }}
           />
 
-          {/* Modal */}
+          {/* Panel */}
           <motion.div
-            key="omni-modal"
+            key="omni-panel"
             initial={{ opacity: 0, scale: 0.96, y: -12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -12 }}
@@ -120,94 +393,136 @@ export const OmniInputModal: React.FC = () => {
             className="fixed z-[61] bg-white rounded-3xl overflow-hidden"
             style={{
               width: 580,
-              top: '20%',
+              top: '14%',
               left: '50%',
               transform: 'translateX(-50%)',
-              boxShadow:
-                '0 0 0 1.5px #E2E8F0, 0 32px 80px -8px rgba(15,23,42,0.18)',
+              boxShadow: '0 0 0 1.5px #E2E8F0, 0 32px 80px -8px rgba(15,23,42,0.20)',
             }}
           >
-            {/* Search Input */}
-            <div className="flex items-center gap-4 px-6 py-5 border-b border-slate-100">
-              <Search size={20} className="text-slate-400 shrink-0" />
-              <input
-                autoFocus
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={handleInputKeyDown}
-                disabled={isProcessing}
-                placeholder={isProcessing ? "Executando ação..." : "O que você quer fazer?"}
-                className="flex-1 text-[17px] font-medium text-slate-900 placeholder:text-slate-400 bg-transparent border-none outline-none disabled:opacity-50"
-              />
+            {/* Header */}
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
+              {activeAction ? (
+                <button
+                  onClick={() => setActiveAction(null)}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all shrink-0"
+                >
+                  <ArrowLeft size={16} />
+                </button>
+              ) : (
+                <Search size={18} className="text-slate-400 shrink-0" />
+              )}
+
+              {activeAction ? (
+                <p className="flex-1 text-[15px] font-bold text-slate-800">{formTitle[activeAction]}</p>
+              ) : (
+                <input
+                  autoFocus
+                  type="text"
+                  value={query}
+                  onChange={e => { setQuery(e.target.value); setSelectedIndex(0); }}
+                  onKeyDown={handleInputKeyDown}
+                  placeholder="O que você quer fazer? (ou descreva para a IA...)"
+                  className="flex-1 text-[15px] font-medium text-slate-900 placeholder:text-slate-400 bg-transparent border-none outline-none"
+                />
+              )}
+
               <button
                 onClick={close}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 text-slate-400 hover:text-slate-600 transition-all text-[11px] font-bold"
+                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 text-slate-400 hover:text-slate-600 transition-all text-[10px] font-bold shrink-0"
               >
-                <X size={12} />
-                ESC
+                <X size={11} /> ESC
               </button>
             </div>
 
-            {/* Suggestions */}
-            <div className="py-3 pb-4">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-6 mb-2">
-                {query ? 'Resultados' : 'Sugestões de Ação'}
-              </p>
-              <ul>
-                {filtered.map((s, i) => {
-                  const Icon = s.icon;
-                  return (
-                    <motion.li
-                      key={s.label}
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.04 }}
-                    >
-                      <button
-                        onClick={() => handleExecute(s)}
-                        disabled={isProcessing}
-                        className={`w-full flex items-center gap-4 px-5 py-3 mx-1 rounded-2xl transition-all group text-left ${
-                          selectedIndex === i ? 'bg-slate-100 shadow-sm' : 'hover:bg-slate-50'
-                        } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        style={{ width: 'calc(100% - 8px)' }}
-                      >
-                        <div
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform ${
-                            selectedIndex === i ? 'scale-110' : ''
-                          }`}
-                          style={{ background: s.iconBg, color: s.iconColor }}
+            {/* Body — conditional */}
+            <AnimatePresence mode="wait">
+              {activeAction ? (
+                <motion.div
+                  key={activeAction}
+                  initial={{ opacity: 0, x: 16 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -16 }}
+                  transition={{ duration: 0.18 }}
+                >
+                  {activeAction === 'create-client' && <CreateClientForm onBack={() => setActiveAction(null)} onDone={close} />}
+                  {activeAction === 'create-project' && <CreateProjectForm onBack={() => setActiveAction(null)} onDone={close} />}
+                  {activeAction === 'create-agent' && <CreateAgentForm onBack={() => setActiveAction(null)} onDone={close} />}
+                  {activeAction === 'analyze-ai' && <AIAnalysisForm initialQuery={query} onBack={() => setActiveAction(null)} onDone={close} />}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="list"
+                  initial={{ opacity: 0, x: -16 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 16 }}
+                  transition={{ duration: 0.18 }}
+                  className="py-2 pb-3 max-h-72 overflow-y-auto"
+                >
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-5 mb-1.5 mt-1">
+                    {query ? 'Resultados' : 'Ações Disponíveis'}
+                  </p>
+                  <ul>
+                    {uniqueActions.map((action, i) => {
+                      const Icon = action.icon;
+                      return (
+                        <motion.li
+                          key={action.label}
+                          initial={{ opacity: 0, x: -6 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.03 }}
                         >
-                          <Icon size={17} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-semibold text-slate-900">{s.label}</p>
-                          <p className="text-[11px] text-slate-400 truncate">{s.description}</p>
-                        </div>
-                        <ArrowRight
-                          size={14}
-                          className="text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all"
-                        />
-                      </button>
-                    </motion.li>
-                  );
-                })}
-                {filtered.length === 0 && (
-                  <li className="px-6 py-6 text-center text-[13px] text-slate-400">
-                    Nenhuma ação encontrada para &quot;{query}&quot;.
-                  </li>
-                )}
-              </ul>
-            </div>
+                          <button
+                            onClick={() => handleSelectAction(action)}
+                            className={`w-full flex items-center gap-3.5 px-4 py-2.5 mx-1 rounded-2xl transition-all group text-left ${
+                              selectedIndex === i ? 'bg-slate-100' : 'hover:bg-slate-50'
+                            }`}
+                            style={{ width: 'calc(100% - 8px)' }}
+                          >
+                            <div
+                              className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-transform ${selectedIndex === i ? 'scale-110' : ''}`}
+                              style={{ background: action.iconBg, color: action.iconColor }}
+                            >
+                              <Icon size={15} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[12.5px] font-semibold text-slate-900">{action.label}</p>
+                              <p className="text-[10.5px] text-slate-400 truncate">{action.description}</p>
+                            </div>
+                            <ArrowRight
+                              size={13}
+                              className="text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all shrink-0"
+                            />
+                          </button>
+                        </motion.li>
+                      );
+                    })}
+                    {uniqueActions.length === 0 && (
+                      <li className="px-5 py-5 text-center">
+                        <p className="text-[13px] text-slate-400">Nenhuma ação encontrada.</p>
+                        <button
+                          onClick={() => setActiveAction('analyze-ai')}
+                          className="mt-2 text-[12px] text-blue-500 font-semibold hover:underline"
+                        >
+                          Enviar &quot;{query}&quot; para a IA →
+                        </button>
+                      </li>
+                    )}
+                  </ul>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Footer */}
-            <div className="px-6 py-3 border-t border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-3 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-[9px]">↑↓</kbd> navegar
-                <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-[9px]">↵</kbd> executar
+            {!activeAction && (
+              <div className="px-5 py-2.5 border-t border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-3 text-[9.5px] text-slate-400 font-bold uppercase tracking-wider">
+                  <span><kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-[9px]">↑↓</kbd> navegar</span>
+                  <span><kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-[9px]">↵</kbd> selecionar</span>
+                  <span><kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-[9px]">ESC</kbd> fechar</span>
+                </div>
+                <span className="text-[9.5px] text-slate-300 font-medium">Company System · Omni Input</span>
               </div>
-              <span className="text-[10px] text-slate-300 font-medium">Company System · Omni Input</span>
-            </div>
+            )}
           </motion.div>
         </>
       )}

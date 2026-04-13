@@ -4,6 +4,7 @@ import "./globals.css";
 import { TopBarHUD } from "@/components/TopBarHUD";
 import { AgentChatModal } from "@/components/AgentChatModal";
 import { ClientShell } from "@/components/ClientShell";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,6 +42,7 @@ export default function RootLayout({
           {children}
         </ClientShell>
         <AgentChatModal />
+        <Toaster position="bottom-right" richColors toastOptions={{ style: { fontFamily: 'Inter, sans-serif', borderRadius: '16px' } }} />
       </body>
     </html>
   );
