@@ -6,7 +6,10 @@ import { useGameStore } from '@/store/useGameStore';
 import { motion } from 'framer-motion';
 
 export const TopBarHUD: React.FC = () => {
-  const { budget, activeProjects } = useGameStore();
+  const { clients, projects } = useGameStore();
+  
+  const budget = clients.reduce((acc, c) => acc + (c.value || 0), 0);
+  const activeProjects = projects.filter(p => p.status === 'in-progress' || p.status === 'backlog').length;
 
   return (
     <motion.header

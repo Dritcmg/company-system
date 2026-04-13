@@ -4,16 +4,28 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore, Project, ProjectStatus } from '@/store/useGameStore';
 import { AlignLeft, Clock, X, Tags, Activity } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
 export const ProjectsKanbanView: React.FC = () => {
-  const { projects } = useGameStore();
+  const [isMounted, setIsMounted] = React.useState(false);
+  React.useEffect(() => setIsMounted(true), []);
+
+  const { projects, updateProjectStatus } = useGameStore();
 
   const backlog = projects.filter((p) => p.status === 'backlog');
   const inProgress = projects.filter((p) => p.status === 'in-progress');
   const done = projects.filter((p) => p.status === 'done');
 
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    updateProjectStatus(result.draggableId, result.destination.droppableId as ProjectStatus);
+  };
+
+  if (!isMounted) return null;
+
   return (
-    <div className="w-full h-full flex flex-col p-10 overflow-hidden">
+    <DragDropContext onDragEnd={onDragEnd}>
+      <div className="w-full h-full flex flex-col p-10 overflow-hidden">
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -34,7 +46,8 @@ export const ProjectsKanbanView: React.FC = () => {
       </div>
       
       <ProjectSlideOver />
-    </div>
+      </div>
+    </DragDropContext>
   );
 };
 
@@ -46,25 +59,34 @@ interface KanbanColumnProps {
   text: string;
 }
 
-const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, projects, color, text }) => {
+const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, status, projects, color, text }) => {
   return (
-    <div className="flex-1 min-w-[320px] bg-slate-50/50 rounded-3xl p-4 flex flex-col border border-slate-100">
-      <div className="flex items-center justify-between mb-4 px-2">
-        <div className="flex items-center gap-2">
-          <div className={`w-3 h-3 rounded-full ${color}`} />
-          <h3 className={`text-[13px] font-bold uppercase tracking-widest ${text}`}>{title}</h3>
-        </div>
-        <span className="text-[11px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded-full border border-slate-200">
-          {projects.length}
-        </span>
-      </div>
+    <Droppable droppableId={status}>
+      {(provided) => (
+        <div 
+          ref={provided.innerRef}
+          {...provided.droppableProps}
+          className="flex-1 min-w-[320px] bg-slate-50/50 rounded-3xl p-4 flex flex-col border border-slate-100"
+        >
+          <div className="flex items-center justify-between mb-4 px-2">
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${color}`} />
+              <h3 className={`text-[13px] font-bold uppercase tracking-widest ${text}`}>{title}</h3>
+            </div>
+            <span className="text-[11px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded-full border border-slate-200">
+              {projects.length}
+            </span>
+          </div>
 
-      <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-        {projects.map((project, i) => (
-          <ProjectCard key={project.id} project={project} index={i} />
-        ))}
-      </div>
-    </div>
+          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+            {projects.map((project, i) => (
+              <ProjectCard key={project.id} project={project} index={i} />
+            ))}
+            {provided.placeholder}
+          </div>
+        </div>
+      )}
+    </Droppable>
   );
 };
 
@@ -72,46 +94,57 @@ const ProjectCard: React.FC<{ project: Project; index: number }> = ({ project, i
   const { setSelectedProject } = useGameStore();
 
   return (
-    <motion.div
-      onClick={() => setSelectedProject(project)}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
-      whileHover={{ y: -2, boxShadow: '0 8px 16px -4px rgba(15,23,42,0.08)' }}
-      className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm cursor-pointer flex flex-col gap-3 transition-all hover:border-slate-300"
-    >
-      <div className="flex flex-wrap gap-1.5 mb-1">
-        {project.tags.map(tag => (
-          <span key={tag} className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[9px] font-bold uppercase tracking-wider">
-            {tag}
-          </span>
-        ))}
-      </div>
+    <Draggable draggableId={project.id} index={index}>
+      {(provided) => (
+        <div
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          {...provided.dragHandleProps}
+          style={provided.draggableProps.style}
+        >
+          <motion.div
+            onClick={() => setSelectedProject(project)}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+            whileHover={{ y: -2, boxShadow: '0 8px 16px -4px rgba(15,23,42,0.08)' }}
+            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm cursor-grab active:cursor-grabbing flex flex-col gap-3 transition-all hover:border-slate-300"
+          >
+            <div className="flex flex-wrap gap-1.5 mb-1">
+              {project.tags.map(tag => (
+                <span key={tag} className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[9px] font-bold uppercase tracking-wider">
+                  {tag}
+                </span>
+              ))}
+            </div>
 
-      <div>
-        <h4 className="text-[14px] font-bold text-slate-900 leading-tight">{project.title}</h4>
-        <p className="text-[11px] font-medium text-slate-500 mt-1">{project.client}</p>
-      </div>
+            <div>
+              <h4 className="text-[14px] font-bold text-slate-900 leading-tight">{project.title}</h4>
+              <p className="text-[11px] font-medium text-slate-500 mt-1">{project.client}</p>
+            </div>
 
-      <div className="pt-3 border-t border-slate-100 flex items-center justify-between mt-auto">
-        <div className="flex items-center gap-1.5 text-slate-400">
-          <AlignLeft size={14} />
-          <Clock size={14} />
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between mt-auto">
+              <div className="flex items-center gap-1.5 text-slate-400">
+                <AlignLeft size={14} />
+                <Clock size={14} />
+              </div>
+              
+              {project.status !== 'done' && (
+                <div className="flex items-center gap-2">
+                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Work: {project.workload}%</span>
+                   <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-blue-500 rounded-full" 
+                        style={{ width: `${project.workload}%` }} 
+                      />
+                   </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
         </div>
-        
-        {project.status !== 'done' && (
-          <div className="flex items-center gap-2">
-             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Work: {project.workload}%</span>
-             <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-blue-500 rounded-full" 
-                  style={{ width: `${project.workload}%` }} 
-                />
-             </div>
-          </div>
-        )}
-      </div>
-    </motion.div>
+      )}
+    </Draggable>
   );
 };
 

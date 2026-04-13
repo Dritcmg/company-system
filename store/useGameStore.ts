@@ -1,9 +1,20 @@
 import { create } from 'zustand';
+import { createClient } from '@/utils/supabase/client';
+
+const supabase = createClient();
 
 // ─── Data Types ────────────────────────────────────────────────────────────────
 export type View = 'lobby' | 'clients' | 'projects';
 export type ClientTag = 'lead' | 'active' | 'churned';
 export type ProjectStatus = 'backlog' | 'in-progress' | 'done';
+
+export interface Agent {
+  id: string;
+  type: string;
+  title: string;
+  sub_title: string;
+  progress: number;
+}
 
 export interface Client {
   id: string;
@@ -25,10 +36,6 @@ export interface Project {
 
 // ─── State Shape ───────────────────────────────────────────────────────────────
 interface GameState {
-  // Resources
-  budget: number;
-  activeProjects: number;
-
   // Navigation
   currentView: View;
   setCurrentView: (view: View) => void;
@@ -47,36 +54,23 @@ interface GameState {
   setSelectedClient: (client: Client | null) => void;
   selectedProject: Project | null;
   setSelectedProject: (project: Project | null) => void;
+  updateProjectStatus: (projectId: string, newStatus: ProjectStatus) => void;
+
+  // Supabase Fetchers
+  fetchClients: () => Promise<void>;
+  fetchProjects: () => Promise<void>;
+  fetchAgents: () => Promise<void>;
 
   // Data
   clients: Client[];
   projects: Project[];
+  agents: Agent[];
 }
 
-// ─── Mock Data ─────────────────────────────────────────────────────────────────
-const MOCK_CLIENTS: Client[] = [
-  { id: 'c1', name: 'Rafael Moura',    company: 'DevStudio Ltda.',   tag: 'active',  value: 12500, initials: 'RM' },
-  { id: 'c2', name: 'Juliana Campos',  company: 'Pixel Agency',      tag: 'lead',    value: 8000,  initials: 'JC' },
-  { id: 'c3', name: 'Carlos Henrique', company: 'TechFlow SAS',      tag: 'active',  value: 22000, initials: 'CH' },
-  { id: 'c4', name: 'Mariana Silva',   company: 'BrandCo',           tag: 'lead',    value: 5500,  initials: 'MS' },
-  { id: 'c5', name: 'Anderson Lima',   company: 'SaaS Ventures',     tag: 'churned', value: 3200,  initials: 'AL' },
-  { id: 'c6', name: 'Beatriz Rocha',   company: 'StartupXP',         tag: 'active',  value: 17800, initials: 'BR' },
-];
-
-const MOCK_PROJECTS: Project[] = [
-  { id: 'p1', title: 'Portal do Cliente',     client: 'DevStudio Ltda.',  status: 'in-progress', workload: 62, tags: ['Next.js', 'Supabase'] },
-  { id: 'p2', title: 'Speaker IA',            client: 'TechFlow SAS',     status: 'in-progress', workload: 85, tags: ['n8n', 'OpenAI', 'WhatsApp'] },
-  { id: 'p3', title: 'Landing Page Pixel',    client: 'Pixel Agency',     status: 'backlog',      workload: 10, tags: ['Figma', 'React'] },
-  { id: 'p4', title: 'Dashboard Analytics',   client: 'SaaS Ventures',    status: 'backlog',      workload: 0,  tags: ['TypeScript', 'Recharts'] },
-  { id: 'p5', title: 'Branding Redesign',     client: 'BrandCo',          status: 'done',         workload: 100, tags: ['Design', 'Illustrator'] },
-  { id: 'p6', title: 'API Integrations v2',   client: 'DevStudio Ltda.',  status: 'done',         workload: 100, tags: ['Node.js', 'REST'] },
-];
+// Real Data ─────────────────────────────────────────────────────────────────
 
 // ─── Store ─────────────────────────────────────────────────────────────────────
 export const useGameStore = create<GameState>((set) => ({
-  budget: 50000,
-  activeProjects: 3,
-
   currentView: 'lobby',
   setCurrentView: (view) => set({ currentView: view }),
 
@@ -93,6 +87,43 @@ export const useGameStore = create<GameState>((set) => ({
   selectedProject: null,
   setSelectedProject: (project) => set({ selectedProject: project }),
 
-  clients: MOCK_CLIENTS,
-  projects: MOCK_PROJECTS,
+  updateProjectStatus: (projectId, newStatus) => set((state) => ({
+    projects: state.projects.map((p) => 
+      p.id === projectId ? { ...p, status: newStatus } : p
+    )
+  })),
+
+  fetchClients: async () => {
+    try {
+      const { data, error } = await supabase.from('clients').select('*');
+      if (error) throw error;
+      if (data) set({ clients: data });
+    } catch (e) {
+      console.error("Failed to fetch clients from Supabase:", e);
+    }
+  },
+
+  fetchProjects: async () => {
+    try {
+      const { data, error } = await supabase.from('projects').select('*');
+      if (error) throw error;
+      if (data) set({ projects: data });
+    } catch (e) {
+      console.error("Failed to fetch projects from Supabase:", e);
+    }
+  },
+
+  fetchAgents: async () => {
+    try {
+      const { data, error } = await supabase.from('agents').select('*');
+      if (error) throw error;
+      if (data) set({ agents: data });
+    } catch (e) {
+      console.error("Failed to fetch agents from Supabase:", e);
+    }
+  },
+
+  clients: [],
+  projects: [],
+  agents: [],
 }));

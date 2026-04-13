@@ -31,9 +31,23 @@ const SUGGESTIONS: Suggestion[] = [
 ];
 
 export const OmniInputModal: React.FC = () => {
-  const { isOmniInputOpen, setOmniInputOpen } = useGameStore();
+  const { isOmniInputOpen, setOmniInputOpen, toggleOmniInput } = useGameStore();
   const [query, setQuery] = useState('');
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
 
+  React.useEffect(() => { setSelectedIndex(0); }, [query]);
+
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        toggleOmniInput();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toggleOmniInput]);
   const filtered = query.trim()
     ? SUGGESTIONS.filter((s) =>
         s.label.toLowerCase().includes(query.toLowerCase()) ||
@@ -41,7 +55,45 @@ export const OmniInputModal: React.FC = () => {
       )
     : SUGGESTIONS;
 
-  const close = () => { setOmniInputOpen(false); setQuery(''); };
+  const close = () => { 
+    setOmniInputOpen(false); 
+    setQuery(''); 
+    setSelectedIndex(0); 
+  };
+
+  const handleExecute = async (suggestion: Suggestion) => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+    try {
+      await fetch('/api/n8n', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: suggestion.label, query })
+      });
+      // Optionally delay close to show a checkmark or success state
+      setTimeout(close, 200);
+    } catch (error) {
+      console.error("Webhook Execution Error:", error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') close();
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev < filtered.length - 1 ? prev + 1 : 0));
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : filtered.length - 1));
+    }
+    if (e.key === 'Enter' && filtered[selectedIndex]) {
+      e.preventDefault();
+      handleExecute(filtered[selectedIndex]);
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -83,9 +135,10 @@ export const OmniInputModal: React.FC = () => {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Escape' && close()}
-                placeholder="O que você quer fazer?"
-                className="flex-1 text-[17px] font-medium text-slate-900 placeholder:text-slate-400 bg-transparent border-none outline-none"
+                onKeyDown={handleInputKeyDown}
+                disabled={isProcessing}
+                placeholder={isProcessing ? "Executando ação..." : "O que você quer fazer?"}
+                className="flex-1 text-[17px] font-medium text-slate-900 placeholder:text-slate-400 bg-transparent border-none outline-none disabled:opacity-50"
               />
               <button
                 onClick={close}
@@ -112,11 +165,17 @@ export const OmniInputModal: React.FC = () => {
                       transition={{ delay: i * 0.04 }}
                     >
                       <button
-                        className="w-full flex items-center gap-4 px-5 py-3 mx-1 rounded-2xl hover:bg-slate-50 transition-all group text-left"
+                        onClick={() => handleExecute(s)}
+                        disabled={isProcessing}
+                        className={`w-full flex items-center gap-4 px-5 py-3 mx-1 rounded-2xl transition-all group text-left ${
+                          selectedIndex === i ? 'bg-slate-100 shadow-sm' : 'hover:bg-slate-50'
+                        } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
                         style={{ width: 'calc(100% - 8px)' }}
                       >
                         <div
-                          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform ${
+                            selectedIndex === i ? 'scale-110' : ''
+                          }`}
                           style={{ background: s.iconBg, color: s.iconColor }}
                         >
                           <Icon size={17} />
