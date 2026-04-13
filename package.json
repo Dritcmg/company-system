@@ -1,24 +1,31 @@
 {
-  "name": "tycoonclaws",
-  "version": "1.0.0",
-  "description": "**Tycoonclaws** é um simulador de escritório 3D funcional onde agentes de IA trabalham, interagem e colaboram em tempo real. Inspirado em clássicos como \"Dale & Dawson Stationery Supplies\", o foco é observar e gerenciar múltiplos agentes autônomos em um ambiente espacial compartilhado.",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs"
-  },
+  "name": "company-system",
+  "version": "0.1.0",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Padrim222/tycoonclaws.git"
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.38.0",
+    "lucide-react": "^1.8.0",
+    "next": "16.2.3",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "tailwind-merge": "^3.5.0",
+    "zustand": "^5.0.12"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/Padrim222/tycoonclaws/issues"
-  },
-  "homepage": "https://github.com/Padrim222/tycoonclaws#readme"
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.3",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
 }
