@@ -39,3 +39,29 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# AI IDE & Workspace files
+.windsurf/
+.roo/
+.claude/
+.kode/
+.mcpjam/
+.factory/
+.neovate/
+.commandcode/
+.continue/
+.pochi/
+.pi/
+.goose/
+.crush/
+.zencoder/
+.codebuddy/
+.agents/
+.kiro/
+.qoder/
+.qwen/
+.kilocode/
+.junie/
+skills-lock.json
+skills/
+
