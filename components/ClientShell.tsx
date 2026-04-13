@@ -6,13 +6,14 @@ import { SidebarNav } from '@/components/SidebarNav';
 import { OmniInputModal } from '@/components/OmniInputModal';
 
 export const ClientShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { fetchClients, fetchProjects, fetchAgents } = useGameStore();
+  const { fetchClients, fetchProjects, fetchAgents, initRealtimeSubscription } = useGameStore();
 
   useEffect(() => {
     fetchClients();
     fetchProjects();
     fetchAgents();
-  }, [fetchClients, fetchProjects, fetchAgents]);
+    initRealtimeSubscription();
+  }, [fetchClients, fetchProjects, fetchAgents, initRealtimeSubscription]);
 
   return (
     <>

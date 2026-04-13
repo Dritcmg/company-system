@@ -1,7 +1,18 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@/utils/supabase/server';
+import { cookies } from 'next/headers';
 
 export async function POST(req: Request) {
   try {
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
+    
+    // Auth Guard
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized. You must be authenticated to trigger workflow actions.' }, { status: 401 });
+    }
+
     const body = await req.json();
     const webhookUrl = process.env.N8N_WEBHOOK_URL;
 

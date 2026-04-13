@@ -61,6 +61,10 @@ interface GameState {
   fetchProjects: () => Promise<void>;
   fetchAgents: () => Promise<void>;
 
+  // Realtime Setup
+  hasInitializedRealtime: boolean;
+  initRealtimeSubscription: () => void;
+
   // Data
   clients: Client[];
   projects: Project[];
@@ -121,6 +125,42 @@ export const useGameStore = create<GameState>((set) => ({
     } catch (e) {
       console.error("Failed to fetch agents from Supabase:", e);
     }
+  },
+
+  hasInitializedRealtime: false,
+  initRealtimeSubscription: () => {
+    set((state) => {
+      if (state.hasInitializedRealtime) return state;
+      
+      supabase.channel('global-database-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, (payload) => {
+          set((s) => {
+            if (payload.eventType === 'INSERT') return { projects: [...s.projects, payload.new as Project] };
+            if (payload.eventType === 'DELETE') return { projects: s.projects.filter(p => p.id !== payload.old.id) };
+            if (payload.eventType === 'UPDATE') return { projects: s.projects.map(p => p.id === payload.new.id ? payload.new as Project : p) };
+            return s;
+          });
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, (payload) => {
+          set((s) => {
+            if (payload.eventType === 'INSERT') return { clients: [...s.clients, payload.new as Client] };
+            if (payload.eventType === 'DELETE') return { clients: s.clients.filter(p => p.id !== payload.old.id) };
+            if (payload.eventType === 'UPDATE') return { clients: s.clients.map(p => p.id === payload.new.id ? payload.new as Client : p) };
+            return s;
+          });
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'agents' }, (payload) => {
+          set((s) => {
+            if (payload.eventType === 'INSERT') return { agents: [...s.agents, payload.new as Agent] };
+            if (payload.eventType === 'DELETE') return { agents: s.agents.filter(p => p.id !== payload.old.id) };
+            if (payload.eventType === 'UPDATE') return { agents: s.agents.map(p => p.id === payload.new.id ? payload.new as Agent : p) };
+            return s;
+          });
+        })
+        .subscribe();
+
+      return { hasInitializedRealtime: true };
+    });
   },
 
   clients: [],
