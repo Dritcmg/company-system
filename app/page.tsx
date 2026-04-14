@@ -4,7 +4,9 @@ import { useGameStore } from '@/store/useGameStore';
 import { AgentDesk } from '@/components/AgentDesk';
 import { ClientsView } from '@/components/ClientsView';
 import { ProjectsKanbanView } from '@/components/ProjectsKanbanView';
-import { Building2, ShieldCheck, Cpu, MousePointer2 } from 'lucide-react';
+import { AgentsView } from '@/components/AgentsView';
+import { FinancialView } from '@/components/FinancialView';
+import { Building2, ShieldCheck, Cpu, Globe, MousePointer2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Home() {
@@ -13,31 +15,37 @@ export default function Home() {
   return (
     <div className="relative w-full h-full bg-dots">
       <AnimatePresence mode="wait">
-        {currentView === 'lobby' && <LobbyView key="lobby" />}
-        {currentView === 'clients' && <ClientsView key="clients" />}
+        {currentView === 'lobby'    && <LobbyView    key="lobby" />}
+        {currentView === 'clients'  && <ClientsView  key="clients" />}
         {currentView === 'projects' && <ProjectsKanbanView key="projects" />}
+        {currentView === 'agents'   && <AgentsView   key="agents" />}
+        {currentView === 'financials' && <FinancialView key="financials" />}
       </AnimatePresence>
     </div>
   );
 }
 
-const ICONS: Record<string, React.ElementType> = {
-  admin: Building2,
-  finance: ShieldCheck,
+// ─── Icon map keyed by sector ─────────────────────────────────────────────────
+const SECTOR_ICONS: Record<string, React.ElementType> = {
+  admin:      Building2,
+  finance:    ShieldCheck,
   production: Cpu,
+  omni:       Globe,
 };
 
+// ─── Lobby ────────────────────────────────────────────────────────────────────
 const LobbyView = () => {
-  const { agents } = useGameStore();
+  const { systemAgents } = useGameStore();
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.3 }}
       className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden"
     >
+      {/* Ambient washes */}
       <div className="pointer-events-none absolute inset-0"
         style={{
           background:
@@ -56,23 +64,26 @@ const LobbyView = () => {
       </div>
 
       <div className="grid grid-cols-3 gap-6 w-full max-w-3xl px-6 z-10">
-        {agents.length === 0 ? (
-          <div className="col-span-3 text-center py-10 opacity-60">
-            <Cpu size={32} className="mx-auto text-slate-300 mb-3" />
-            <span className="text-sm font-semibold text-slate-500 block">Nenhum agente online detectado.</span>
-            <span className="text-xs text-slate-400">Alimente o seu banco de dados para ativar as Unidades.</span>
+        {systemAgents.length === 0 ? (
+          <div className="col-span-3 text-center py-14">
+            <Cpu size={36} className="mx-auto text-slate-200 mb-3" />
+            <p className="text-sm font-semibold text-slate-500">Nenhum agente online.</p>
+            <p className="text-xs text-slate-400 mt-1">Acesse a aba Agentes para configurar as unidades.</p>
           </div>
         ) : (
-          agents.map((agent) => {
-            const Icon = ICONS[agent.type] || MousePointer2;
+          systemAgents.map((agent) => {
+            const Icon = SECTOR_ICONS[agent.sector] || MousePointer2;
             return (
               <AgentDesk
                 key={agent.id}
-                type={agent.type}
-                title={agent.title}
-                subTitle={agent.sub_title}
+                type={agent.sector}
+                title={agent.name}
+                subTitle={agent.sector === 'admin' ? 'Front Office & Logistics' :
+                           agent.sector === 'finance' ? 'Contracts & Treasury' :
+                           agent.sector === 'production' ? 'Delivery & Pipelines' : agent.sector}
                 icon={Icon}
-                progress={agent.progress}
+                progress={agent.workload ?? 0}
+                status={agent.status}
               />
             );
           })

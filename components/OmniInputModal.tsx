@@ -44,7 +44,7 @@ const labelCls = `text-[10px] font-black uppercase tracking-widest text-slate-50
 // ─── Form: Create Client ──────────────────────────────────────────────────────
 const CreateClientForm: React.FC<{ onBack: () => void; onDone: () => void }> = ({ onBack, onDone }) => {
   const { createClient } = useGameStore();
-  const [form, setForm] = useState({ name: '', company: '', tag: 'lead', value: '' });
+  const [form, setForm] = useState({ name: '', company: '', tag: 'lead', origin: '', communication_channel: '' });
   const [saving, setSaving] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => { ref.current?.focus(); }, []);
@@ -57,8 +57,10 @@ const CreateClientForm: React.FC<{ onBack: () => void; onDone: () => void }> = (
       name: form.name,
       company: form.company,
       tag: form.tag as 'lead' | 'active' | 'churned',
-      value: Number(form.value) || 0,
+      value: 0,
       initials: '',
+      origin: form.origin,
+      communication_channel: form.communication_channel,
     });
     setSaving(false);
     if (error) {
@@ -79,18 +81,22 @@ const CreateClientForm: React.FC<{ onBack: () => void; onDone: () => void }> = (
         <label className={labelCls}>Empresa</label>
         <input className={inputCls} placeholder="ex: TechFlow Ltda." value={form.company} onChange={e => setForm(f => ({ ...f, company: e.target.value }))} />
       </div>
+      <div>
+        <label className={labelCls}>Status do Cliente</label>
+        <select className={inputCls} value={form.tag} onChange={e => setForm(f => ({ ...f, tag: e.target.value }))}>
+          <option value="lead">Lead / Prospecto</option>
+          <option value="active">Ativo</option>
+          <option value="churned">Inativo</option>
+        </select>
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className={labelCls}>Status</label>
-          <select className={inputCls} value={form.tag} onChange={e => setForm(f => ({ ...f, tag: e.target.value }))}>
-            <option value="lead">Lead</option>
-            <option value="active">Ativo</option>
-            <option value="churned">Inativo</option>
-          </select>
+          <label className={labelCls}>Origem / Canal de Aquisição</label>
+          <input className={inputCls} placeholder="ex: Google Ads, Indicação" value={form.origin} onChange={e => setForm(f => ({ ...f, origin: e.target.value }))} />
         </div>
         <div>
-          <label className={labelCls}>Valor do contrato (R$)</label>
-          <input className={inputCls} type="number" placeholder="0" value={form.value} onChange={e => setForm(f => ({ ...f, value: e.target.value }))} />
+          <label className={labelCls}>Meio de Comunicação</label>
+          <input className={inputCls} placeholder="ex: WhatsApp, Email" value={form.communication_channel} onChange={e => setForm(f => ({ ...f, communication_channel: e.target.value }))} />
         </div>
       </div>
       <div className="flex gap-3 pt-1">
@@ -108,11 +114,23 @@ const CreateClientForm: React.FC<{ onBack: () => void; onDone: () => void }> = (
 
 // ─── Form: Create Project ─────────────────────────────────────────────────────
 const CreateProjectForm: React.FC<{ onBack: () => void; onDone: () => void }> = ({ onBack, onDone }) => {
-  const { createProject, clients } = useGameStore();
-  const [form, setForm] = useState({ title: '', client: '', status: 'backlog', workload: '0', tags: '' });
+  const { createProject, clients, projects } = useGameStore();
+  const [form, setForm] = useState({ 
+    title: '', 
+    client: '', 
+    parent_id: '',
+    revenue: '',
+    estimated_deadline: '',
+    status: 'backlog', 
+    workload: '0', 
+    tags: '' 
+  });
   const [saving, setSaving] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => { ref.current?.focus(); }, []);
+  
+  // Apenas Projetos Pai (nível superior)
+  const parentProjects = projects.filter(p => !p.parent_id);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,10 +138,13 @@ const CreateProjectForm: React.FC<{ onBack: () => void; onDone: () => void }> = 
     setSaving(true);
     const { error } = await createProject({
       title: form.title,
-      client: form.client,
+      client_id: form.client || null,
+      parent_id: form.parent_id || null,
       status: form.status as 'backlog' | 'in-progress' | 'done',
       workload: Number(form.workload) || 0,
       tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
+      revenue: Number(form.revenue) || 0,
+      estimated_deadline: form.estimated_deadline || null,
     });
     setSaving(false);
     if (error) {
@@ -137,20 +158,45 @@ const CreateProjectForm: React.FC<{ onBack: () => void; onDone: () => void }> = 
   return (
     <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-4">
       <div>
-        <label className={labelCls}>Nome do Projeto</label>
-        <input ref={ref} className={inputCls} placeholder="ex: Portal do Cliente v2" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+        <label className={labelCls}>Nome do Projeto ou Etapa</label>
+        <input ref={ref} className={inputCls} placeholder="ex: Portal do Cliente (Projeto) ou Fase 1 (Etapa)" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
       </div>
-      <div>
-        <label className={labelCls}>Cliente Associado</label>
-        {clients.length > 0 ? (
-          <select className={inputCls} value={form.client} onChange={e => setForm(f => ({ ...f, client: e.target.value }))}>
-            <option value="">Selecionar cliente…</option>
-            {clients.map(c => <option key={c.id} value={c.company}>{c.name} — {c.company}</option>)}
+      
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={labelCls}>Tipo (Hierarquia)</label>
+          <select className={inputCls} value={form.parent_id} onChange={e => setForm(f => ({ ...f, parent_id: e.target.value }))}>
+            <option value="">Projeto Principal (Independente)</option>
+            {parentProjects.length > 0 && parentProjects.map(p => (
+              <option key={p.id} value={p.id}>Etapa filha de: {p.title}</option>
+            ))}
           </select>
-        ) : (
-          <input className={inputCls} placeholder="Nome da empresa" value={form.client} onChange={e => setForm(f => ({ ...f, client: e.target.value }))} />
-        )}
+        </div>
+        <div>
+          <label className={labelCls}>Cliente Associado</label>
+          {clients.length > 0 ? (
+            <select className={inputCls} value={form.client} onChange={e => setForm(f => ({ ...f, client: e.target.value }))} disabled={!!form.parent_id}>
+              <option value="">Sem vínculo</option>
+              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          ) : (
+            <div className="text-[12px] text-slate-400 py-2">Nenhum cliente</div>
+          )}
+        </div>
       </div>
+
+      {!form.parent_id && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Receita Bruta Esperada (Opcional)</label>
+            <input className={inputCls} type="number" placeholder="ex: 5000" value={form.revenue} onChange={e => setForm(f => ({ ...f, revenue: e.target.value }))} />
+          </div>
+          <div>
+            <label className={labelCls}>Prazo Estimado (Opcional)</label>
+            <input className={inputCls} type="date" value={form.estimated_deadline} onChange={e => setForm(f => ({ ...f, estimated_deadline: e.target.value }))} />
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className={labelCls}>Status</label>
@@ -184,62 +230,138 @@ const CreateProjectForm: React.FC<{ onBack: () => void; onDone: () => void }> = 
 
 // ─── Form: Create Agent ──────────────────────────────────────────────────────
 const CreateAgentForm: React.FC<{ onBack: () => void; onDone: () => void }> = ({ onBack, onDone }) => {
-  const { createAgent } = useGameStore();
-  const [form, setForm] = useState({ title: '', sub_title: '', type: 'admin', progress: '0' });
+  const { createSystemAgent } = useGameStore();
+  const [form, setForm] = useState({ name: '', sector: 'admin', system_prompt: '' });
+  const [skills, setSkills] = useState<string[]>([]);
+  const [skillInput, setSkillInput] = useState('');
+  
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
+  
   useEffect(() => { ref.current?.focus(); }, []);
+
+  const handleGeneratePrompt = () => {
+    setGenerating(true);
+    // Simulates an AI generating the prompt via N8N/OpenAI
+    setTimeout(() => {
+      let prompt = '';
+      switch(form.sector) {
+        case 'admin': prompt = "Você é o Agente Administrativo. Sua função é receber tarefas organizacionais, atualizar CRM, disparar webhooks via n8n e manter as métricas em dia. Sempre responda com tom formal, focando em precisão e eficiência."; break;
+        case 'finance': prompt = "Você é o Agente Financeiro. Controle fluxo de caixa, emita faturas via API de pagamento e avalie riscos em novos contratos. Escalonar automaticamente discrepâncias de valor para análise manual. Tom objetivo."; break;
+        case 'production': prompt = "Você é o Agente de Produção Tech. Avalie Github Commits, verifique testes, otimize milestones de engenharia e alerte a equipe sobre débitos técnicos críticos. Foque 100% na qualidade do software entregue."; break;
+        case 'omni': prompt = "Você é o Agente Omni Router. Sua função é classificar intenções e encaminhar a chamada para o setor correto (Financeiro, Administativo, Produção). Sempre forneça contexto na transição de dados estruturados."; break;
+      }
+      setForm(f => ({ ...f, system_prompt: prompt }));
+      setGenerating(false);
+      toast.success('Prompt executivo gerado com sucesso!');
+    }, 900);
+  };
+
+  const handleAddSkill = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const val = skillInput.trim();
+      if (val && !skills.includes(val)) {
+        setSkills([...skills, val]);
+      }
+      setSkillInput('');
+    }
+  };
+
+  const removeSkill = (s: string) => setSkills(skills.filter(x => x !== s));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title.trim()) return;
+    if (!form.name.trim() || !form.system_prompt.trim()) {
+      toast.error('Preencha os dados e gere um prompt!');
+      return;
+    }
+    
     setSaving(true);
-    const { error } = await createAgent({
-      title: form.title,
-      sub_title: form.sub_title,
-      type: form.type,
-      progress: Number(form.progress) || 0,
+    const { error } = await createSystemAgent({
+      name: form.name,
+      sector: form.sector as 'admin'|'finance'|'production'|'omni',
+      system_prompt: form.system_prompt,
+      status: 'active',
+      permissions: { can_execute: true },
+      dependencies: { tools: skills }
     });
     setSaving(false);
-    if (error) {
-      toast.error('Erro ao configurar agente: ' + error);
-    } else {
-      toast.success('Agente configurado com sucesso!');
+    
+    if (error) toast.error('Erro ao configurar agente: ' + error);
+    else {
+      toast.success('Agente habilitado com sucesso!');
       onDone();
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-4">
-      <div>
-        <label className={labelCls}>Nome do Agente</label>
-        <input ref={ref} className={inputCls} placeholder="ex: Financial Center" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
-      </div>
-      <div>
-        <label className={labelCls}>Subtítulo / Função</label>
-        <input className={inputCls} placeholder="ex: Contracts & Treasury" value={form.sub_title} onChange={e => setForm(f => ({ ...f, sub_title: e.target.value }))} />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="col-span-2">
+          <label className={labelCls}>Nome do Agente</label>
+          <input ref={ref} className={inputCls} placeholder="ex: Financial Oracle" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+        </div>
         <div>
-          <label className={labelCls}>Tipo</label>
-          <select className={inputCls} value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
-            <option value="admin">Administrative</option>
-            <option value="finance">Financial</option>
-            <option value="production">Production</option>
+          <label className={labelCls}>Setor (Função)</label>
+          <select className={inputCls} value={form.sector} onChange={e => setForm(f => ({ ...f, sector: e.target.value }))}>
+            <option value="admin">Administrativo</option>
+            <option value="finance">Financeiro</option>
+            <option value="production">Produção Tech</option>
+            <option value="omni">Omni / Router</option>
           </select>
         </div>
-        <div>
-          <label className={labelCls}>Workload Inicial (%)</label>
-          <input className={inputCls} type="number" min="0" max="100" placeholder="0" value={form.progress} onChange={e => setForm(f => ({ ...f, progress: e.target.value }))} />
+      </div>
+      
+      <div>
+        <label className={labelCls}>System Prompt Base</label>
+        <div className="relative">
+          <textarea 
+            className={`${inputCls} resize-none text-[12px] h-24 mb-1 pr-1`} 
+            placeholder="Comportamento e objetivos essenciais (digite ou gere com IA)..." 
+            value={form.system_prompt} 
+            onChange={e => setForm(f => ({ ...f, system_prompt: e.target.value }))} 
+          />
+          <button 
+            type="button" 
+            disabled={generating}
+            onClick={handleGeneratePrompt}
+            className="absolute top-2 right-2 bg-gradient-to-tr from-amber-400 to-amber-500 text-white p-1.5 rounded-lg shadow-sm hover:scale-105 transition-all outline-none"
+            title="Autogerar Prompt Inicial"
+          >
+            {generating ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} className="fill-white/80" />}
+          </button>
         </div>
       </div>
+
+      <div>
+        <label className={labelCls}>Ferramentas / Skills <span className="text-slate-400 font-normal lowercase">(Aperte Enter)</span></label>
+        <div className="p-1 mb-2 min-h-8 border border-slate-200 bg-slate-50 flex flex-wrap gap-1.5 rounded-xl cursor-text" onClick={() => document.getElementById('skill-input')?.focus()}>
+          {skills.map(s => (
+            <span key={s} className="bg-emerald-100 text-emerald-800 text-[10px] uppercase tracking-wide font-bold px-2 py-1 rounded-md flex items-center gap-1 shadow-[0_1px_1px_rgba(0,0,0,0.05)]">
+              {s} <X size={10} className="hover:text-emerald-950 cursor-pointer" onClick={(e) => { e.stopPropagation(); removeSkill(s); }} />
+            </span>
+          ))}
+          <input 
+            id="skill-input"
+            type="text" 
+            className="flex-1 min-w-[80px] bg-transparent outline-none border-none text-[12px] font-medium px-2 py-1 text-slate-700" 
+            placeholder={skills.length === 0 ? "Ex: read_github_issue, mcp_supabase..." : ""}
+            value={skillInput}
+            onChange={e => setSkillInput(e.target.value)}
+            onKeyDown={handleAddSkill}
+          />
+        </div>
+      </div>
+
       <div className="flex gap-3 pt-1">
         <button type="button" onClick={onBack} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-[13px] text-slate-500 font-semibold hover:bg-slate-50 transition-all">
           Cancelar
         </button>
-        <button type="submit" disabled={saving || !form.title.trim()} className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-[13px] font-bold hover:bg-emerald-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2">
+        <button type="submit" disabled={saving || !form.name.trim()} className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-[13px] font-bold hover:bg-emerald-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(5,150,105,0.25)]">
           {saving ? <Loader2 size={14} className="animate-spin" /> : null}
-          {saving ? 'Salvando...' : 'Ativar Agente'}
+          {saving ? 'Habilitando...' : 'Habilitar Agente'}
         </button>
       </div>
     </form>
@@ -305,12 +427,17 @@ const AIAnalysisForm: React.FC<{ initialQuery: string; onBack: () => void; onDon
 
 // ─── Main Modal ───────────────────────────────────────────────────────────────
 export const OmniInputModal: React.FC = () => {
-  const { isOmniInputOpen, setOmniInputOpen, toggleOmniInput, navigateTo } = useGameStore();
+  const { isOmniInputOpen, setOmniInputOpen, toggleOmniInput, navigateTo, omniInputInitialAction } = useGameStore();
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [activeAction, setActiveAction] = useState<ActionId | null>(null);
 
-  // Reset selected index when query changes (via key on list, no effect needed)
+  useEffect(() => {
+    if (isOmniInputOpen && omniInputInitialAction) {
+      setActiveAction(omniInputInitialAction as ActionId);
+      setQuery('');
+    }
+  }, [isOmniInputOpen, omniInputInitialAction]);
 
   // Global Ctrl+K / Cmd+K shortcut
   useEffect(() => {
@@ -390,26 +517,24 @@ export const OmniInputModal: React.FC = () => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -12 }}
             transition={{ type: 'spring', stiffness: 340, damping: 28 }}
-            className="fixed z-[61] bg-white rounded-3xl overflow-hidden"
+            className="fixed z-[61] neu-raised rounded-[2rem] overflow-hidden border-[3px] border-white/60 w-[95vw] md:w-[580px] max-w-full"
             style={{
-              width: 580,
               top: '14%',
               left: '50%',
               transform: 'translateX(-50%)',
-              boxShadow: '0 0 0 1.5px #E2E8F0, 0 32px 80px -8px rgba(15,23,42,0.20)',
             }}
           >
             {/* Header */}
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
+            <div className="flex items-center gap-3 px-5 py-4 border-b-2 border-white/60">
               {activeAction ? (
                 <button
                   onClick={() => setActiveAction(null)}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all shrink-0"
+                  className="w-10 h-10 rounded-2xl flex items-center justify-center neu-btn text-slate-400 hover:text-slate-700 transition-all shrink-0"
                 >
                   <ArrowLeft size={16} />
                 </button>
               ) : (
-                <Search size={18} className="text-slate-400 shrink-0" />
+                <Search size={18} className="text-slate-400 shrink-0 ml-2" />
               )}
 
               {activeAction ? (
@@ -428,9 +553,9 @@ export const OmniInputModal: React.FC = () => {
 
               <button
                 onClick={close}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 text-slate-400 hover:text-slate-600 transition-all text-[10px] font-bold shrink-0"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-[1rem] neu-btn text-slate-400 hover:text-rose-500 transition-all text-[10px] font-black uppercase tracking-widest shrink-0"
               >
-                <X size={11} /> ESC
+                <X size={12} strokeWidth={3} /> ESC
               </button>
             </div>
 
@@ -473,8 +598,8 @@ export const OmniInputModal: React.FC = () => {
                         >
                           <button
                             onClick={() => handleSelectAction(action)}
-                            className={`w-full flex items-center gap-3.5 px-4 py-2.5 mx-1 rounded-2xl transition-all group text-left ${
-                              selectedIndex === i ? 'bg-slate-100' : 'hover:bg-slate-50'
+                            className={`w-full flex items-center gap-4 px-4 py-3 mx-1 rounded-2xl transition-all group text-left ${
+                              selectedIndex === i ? 'neu-inset' : 'hover:neu-flat'
                             }`}
                             style={{ width: 'calc(100% - 8px)' }}
                           >

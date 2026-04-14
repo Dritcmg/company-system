@@ -46,6 +46,22 @@ const THEME: Record<string, {
     glow:      'rgba(52,211,153,0.18)',
     corner:    '#A7F3D0',
   },
+  omni: {
+    icon:      '#FFFBEB',
+    iconText:  '#F59E0B',
+    badge:     '#ECFDF5',
+    badgeText: '#10B981',
+    bar:       'linear-gradient(90deg,#FBBF24,#F97316)',
+    ring:      '#FDE68A',
+    glow:      'rgba(251,191,36,0.18)',
+    corner:    '#FDE68A',
+  },
+};
+
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  active:      { label: 'Online',     color: '#10B981' },
+  maintenance: { label: 'Manutenção', color: '#D97706' },
+  offline:     { label: 'Offline',    color: '#DC2626' },
 };
 
 interface AgentDeskProps {
@@ -54,14 +70,16 @@ interface AgentDeskProps {
   subTitle: string;
   icon: LucideIcon;
   progress: number;
+  status?: 'active' | 'maintenance' | 'offline';
 }
 
 export const AgentDesk: React.FC<AgentDeskProps> = ({
-  type, title, subTitle, icon: Icon, progress,
+  type, title, subTitle, icon: Icon, progress, status = 'active',
 }) => {
   const { selectedAgent, setSelectedAgent } = useGameStore();
   const isSelected = selectedAgent === type;
   const t = THEME[type] ?? THEME.admin;
+  const st = STATUS_LABELS[status] ?? STATUS_LABELS.active;
 
   return (
     <motion.div
@@ -73,13 +91,12 @@ export const AgentDesk: React.FC<AgentDeskProps> = ({
         boxShadow: `0 24px 48px -8px ${t.glow}, 0 0 0 2px ${t.ring}`,
       }}
       transition={{ type: 'spring', stiffness: 280, damping: 26 }}
-      className="relative group cursor-pointer flex flex-col p-6 rounded-3xl overflow-hidden"
+      className={`relative group cursor-pointer flex flex-col p-6 rounded-[2rem] overflow-hidden ${isSelected ? 'neu-inset' : 'neu-raised'}`}
       style={{
-        background: '#FFFFFF',
-        border: isSelected ? `2px solid ${t.ring}` : '1.5px solid #E2E8F0',
+        border: isSelected ? `2px solid ${t.ring}` : '1.5px solid rgba(255,255,255,0.05)',
         boxShadow: isSelected
           ? `0 0 0 4px ${t.glow}, 0 20px 40px -8px ${t.glow}`
-          : '0 4px 24px -4px rgba(15,23,42,0.07)',
+          : undefined,
       }}
     >
       {/* Subtle tinted top stripe */}
@@ -92,13 +109,13 @@ export const AgentDesk: React.FC<AgentDeskProps> = ({
       <div className="flex items-center justify-between mb-6 mt-1">
         <div
           className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
-          style={{ background: t.badge, color: t.badgeText }}
+          style={{ background: `${st.color}18`, color: st.color }}
         >
           <span
-            className="w-1.5 h-1.5 rounded-full animate-pulse"
-            style={{ background: t.badgeText }}
+            className={`w-1.5 h-1.5 rounded-full ${status === 'active' ? 'animate-pulse' : ''}`}
+            style={{ background: st.color }}
           />
-          Online
+          {st.label}
         </div>
         <span className="text-[10px] font-mono text-slate-300 uppercase tracking-widest">
           {type.slice(0, 3).toUpperCase()}-05

@@ -8,6 +8,8 @@ import {
   FolderKanban,
   Settings,
   Command,
+  Cpu,
+  TrendingUp,
 } from 'lucide-react';
 import { useGameStore, View } from '@/store/useGameStore';
 
@@ -20,9 +22,11 @@ interface NavItem {
 }
 
 const TOP_ITEMS: NavItem[] = [
-  { id: 'lobby',    icon: LayoutGrid,    label: 'Lobby',     color: '#3B82F6', bg: '#EFF6FF' },
-  { id: 'clients',  icon: Users,         label: 'Clientes',  color: '#7C3AED', bg: '#F5F3FF' },
-  { id: 'projects', icon: FolderKanban,  label: 'Projetos',  color: '#059669', bg: '#ECFDF5' },
+  { id: 'lobby',    icon: LayoutGrid,   label: 'Lobby',     color: '#0F172A', bg: '#F1F5F9' },
+  { id: 'clients',  icon: Users,        label: 'Clientes',  color: '#0F172A', bg: '#F1F5F9' },
+  { id: 'projects', icon: FolderKanban, label: 'Projetos',  color: '#0F172A', bg: '#F1F5F9' },
+  { id: 'financials', icon: TrendingUp, label: 'Tesouraria',color: '#0F172A', bg: '#F1F5F9' },
+  { id: 'agents',   icon: Cpu,          label: 'Agentes',   color: '#0F172A', bg: '#F1F5F9' },
 ];
 
 export const SidebarNav: React.FC = () => {
@@ -30,17 +34,11 @@ export const SidebarNav: React.FC = () => {
 
   return (
     <aside
-      className="fixed left-0 top-16 bottom-0 z-40 flex flex-col items-center py-4 gap-2"
-      style={{
-        width: 64,
-        background: 'rgba(255,255,255,0.85)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        borderRight: '1.5px solid #E2E8F0',
-      }}
+      className="fixed bottom-4 md:bottom-6 left-4 md:left-6 right-4 md:right-auto top-auto md:top-6 z-40 flex flex-row md:flex-col items-center justify-around md:justify-start md:py-6 py-3 px-6 md:px-0 gap-3 neu-raised rounded-[2rem] overflow-x-auto md:overflow-visible"
+      style={{ width: 'auto', minWidth: 72 }}
     >
       {/* Main nav */}
-      <div className="flex flex-col gap-1.5 flex-1">
+      <div className="flex flex-row md:flex-col gap-1.5 md:flex-1">
         {TOP_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = currentView === item.id;
@@ -59,13 +57,13 @@ export const SidebarNav: React.FC = () => {
       </div>
 
       {/* Bottom: Omni + Settings */}
-      <div className="flex flex-col gap-1.5 pb-2">
+      <div className="flex flex-row md:flex-col gap-1.5 md:pb-2 md:mt-auto">
         <NavButton
           icon={<Command size={17} />}
           label="Omni ⌘K"
           isActive={false}
-          color="#F59E0B"
-          bg="#FFFBEB"
+          color="#0F172A"
+          bg="#F8FAFC"
           onClick={toggleOmniInput}
         />
         <NavButton
@@ -97,12 +95,9 @@ const NavButton: React.FC<NavButtonProps> = ({ icon, label, isActive, color, bg,
       whileHover={{ scale: 1.08 }}
       whileTap={{ scale: 0.94 }}
       onClick={onClick}
-      className="w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-200"
+      className={`w-[44px] h-[44px] rounded-2xl flex items-center justify-center transition-all duration-300 relative ${isActive ? 'neu-btn-active' : 'neu-btn'}`}
       style={{
-        background:  isActive ? bg : 'transparent',
-        color:       isActive ? color : '#94A3B8',
-        boxShadow:   isActive ? `0 4px 12px -2px ${color}30` : 'none',
-        border:      isActive ? `1.5px solid ${color}25` : '1.5px solid transparent',
+        color: isActive ? color : 'var(--neu-text-secondary)',
       }}
     >
       {icon}

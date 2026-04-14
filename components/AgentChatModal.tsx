@@ -47,15 +47,10 @@ export const AgentChatModal: React.FC = () => {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-            className="fixed right-0 top-0 bottom-0 z-50 flex flex-col bg-white"
-            style={{
-              width: 460,
-              borderLeft: '1.5px solid #E2E8F0',
-              boxShadow: '-20px 0 60px -8px rgba(15,23,42,0.12)',
-            }}
+            className="fixed right-0 top-0 bottom-0 z-50 flex flex-col neu-raised border-l border-white/60 w-full sm:w-[460px] max-w-full"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-7 py-5 bg-white border-b border-slate-100">
+            <div className="flex items-center justify-between px-7 py-5 border-b-2 border-white/60">
               <div className="flex items-center gap-4">
                 <div
                   className="w-11 h-11 rounded-2xl flex items-center justify-center shadow-sm"
@@ -84,7 +79,7 @@ export const AgentChatModal: React.FC = () => {
             </div>
 
             {/* Chat area */}
-            <div className="flex-1 overflow-y-auto px-7 py-6 space-y-5 bg-slate-50/60">
+            <div className="flex-1 overflow-y-auto px-7 py-6 space-y-5 bg-transparent">
               {/* System message */}
               <div className="flex gap-3">
                 <div
@@ -94,8 +89,7 @@ export const AgentChatModal: React.FC = () => {
                   <BadgeCheck size={16} />
                 </div>
                 <div
-                  className="p-4 rounded-3xl rounded-tl-none max-w-[88%] bg-white shadow-sm"
-                  style={{ border: '1.5px solid #E2E8F0' }}
+                  className="p-5 neu-flat rounded-3xl rounded-tl-none max-w-[88%]"
                 >
                   <p className="text-[13px] text-slate-700 leading-relaxed">
                     Greetings, Administrator. Communication channel established. I&apos;m ready to
@@ -128,10 +122,9 @@ export const AgentChatModal: React.FC = () => {
             </div>
 
             {/* Input */}
-            <div className="px-7 py-5 bg-white border-t border-slate-100">
+            <div className="px-7 py-5 border-t-2 border-white/60">
               <div
-                className="flex items-center gap-2 rounded-full pl-5 pr-2 py-2 bg-slate-50"
-                style={{ border: '1.5px solid #E2E8F0' }}
+                className="flex items-center gap-2 rounded-full pl-5 pr-2 py-2 neu-inset"
               >
                 <input
                   type="text"
